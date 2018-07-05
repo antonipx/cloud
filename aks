@@ -1,0 +1,4 @@
+az group create --name as123 --location eastus
+az aks create --resource-group as123 --name as123aks --ssh-key-value @~/.ssh/id_rsa.pub
+#az disk create --name aksdsk1 --resource-group asaks  --size-gb 500
+#az vm disk attach --name aksdsk1 --resource-group asaks --vm-name aks-nodepool1-31140048-0

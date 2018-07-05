@@ -1,0 +1,2 @@
+sudo -i
+kubectl apply -f "http://install.portworx.com/?c=$(cat /proc/sys/kernel/random/uuid|cut -f1 -d-)&k=etcd://etcdv3-02.portworx.com:2379&kbver=$(kubectl version --short | awk -Fv '/Server Version: /{print $3}')&stork=true&f=true"

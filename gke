@@ -1,0 +1,67 @@
+#!/bin/bash -e
+
+zone="us-central1-a"
+proj="portworx-eng"
+kver="1.9.7-gke.3"
+etcd="http://etcdv3-01.portworx.com:2379"
+boot="20"  
+data="100"
+
+usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
+check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+for cmd in kubectl gcloud curl sed awk; do check $cmd; done
+
+account=$(gcloud info | awk '/^Account:/ { gsub(/(\[|\])/, "", $2); print $2; }')
+[ $account ] || { echo "GCP Account Info Not Found"; exit 1; }
+
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+gcloud config set compute/zone $zone &>/dev/null
+gcloud config set project $proj &>/dev/null
+
+case $1 in
+    create)
+        gcloud container clusters create ${2:?USAGE: Name not specified} --image-type=UBUNTU  --disk-size=$boot --cluster-version=${kver}
+        igrp=$(gcloud container clusters describe $2 | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }')
+        nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
+        
+        n=0
+        for node in $nodes; do
+            gcloud compute disks create ${2}-d${n} --size=${data}GB --type=pd-ssd
+            gcloud compute instances attach-disk $node --disk ${2}-d${n}
+            n=$(($n+1))
+        done
+
+        gcloud container clusters get-credentials $2
+        kubectl create clusterrolebinding myname-cluster-admin-binding --clusterrole=cluster-admin --user=$account
+        kubectl apply -f "http://install.portworx.com/?type=oci&c=${2}&k=etcd:${etcd}&d=eth0&m=eth0&kbver=${kver}&f=true"
+        kubectl get pods -n kube-system
+        ;;
+    delete)
+        igrp=$(gcloud container clusters describe ${2:?USAGE: Name not specified} | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }')
+        nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
+
+        gcloud container clusters delete $2 
+
+        n=0
+        for node in $nodes; do
+            gcloud compute disks delete ${2}-d${n} 
+            n=$(($n+1))
+        done
+        ;;
+    nodes)
+        igrp=$(gcloud container clusters describe ${2:?USAGE: Name not specified} | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }' )
+        gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }'
+        ;;
+    ssh)
+        gcloud compute ssh ${2:?USAGE: Name not specified}
+        ;;
+    clusters)
+        gcloud container clusters list
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+        
+    

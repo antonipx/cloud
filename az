@@ -1,0 +1,69 @@
+#!/bin/bash -e
+
+: ${type:="Standard_DS4_v2"}
+: ${img:="UbuntuLTS"}
+: ${rg:="portworx"}
+: ${data_size="100"}
+: ${user:="as"}
+: ${owner:="as"}
+: ${key:="@~/.ssh/id_rsa.pub"}
+: ${script:="ubuntu-run.sh"}
+
+usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
+check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+for cmd in az jq ssh; do check $cmd; done
+
+case $1 in
+    create)
+        az vm create \
+            -n ${2:?USAGE: Name not specified} \
+            --size $type \
+            -g $rg \
+            --image $img \
+            ${data_size:+--data-disk-sizes-gb ${data_size}} \
+            --storage-sku Premium_LRS \
+            --admin-username $user \
+            --ssh-key-value $key \
+            --custom-data $script \
+            --tags owner=${owner}
+        ;;
+    delete)
+        : ${2:?USAGE: Name not specified}
+        data_disks=$(az vm show -n $2 -g $rg --query "storageProfile.dataDisks[].name" -o tsv)
+        os_disk=$(az vm show -n $2 -g $rg --query "storageProfile.osDisk.name" -o tsv)
+        ips=$(az vm list-ip-addresses -n $2 -g $rg --query "[].virtualMachine.network.publicIpAddresses[].id" -o tsv)
+        nics=$(az vm nic list --vm-name $2 -g $rg --query "[].id" -o tsv)
+        nsgs=$(az network nic list -g $rg --query "[?name=='${2}VMNic'].networkSecurityGroup[].id" -o tsv)
+        set -x
+        az vm delete -g $rg --name $2 --yes
+        az disk delete -n $os_disk -g $rg --yes
+        az disk delete -n $data_disks -g $rg --yes
+        az network nic delete --ids ${nics}
+        az network public-ip delete --ids ${ips}
+        az network nsg delete --ids ${nsgs}
+        ;;
+    ssh)
+        IP=$(az vm show --name ${2:?USAGE: Name not specified} --resource-group $rg --show-details | jq -r ".publicIps")
+        shift 2
+        ssh ${user}@${IP:?Instance Not Found} $@
+        ;;
+    list)
+        #az vm list -d | jq -c ".[]|select(.tags.owner==\"${owner}\")|[.name,.publicIps]"  
+        az vm list -d --query "[?tags.owner=='${owner}'].{Name:name,IP:publicIps}" -o table
+        ;;
+    setup)
+        echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ wheezy main" | tee /etc/apt/sources.list.d/azure-cli.list
+        apt-get install apt-transport-https
+        apt-key adv --keyserver packages.microsoft.com --recv-keys 52E16F86FEE04B979B07E28DB02C46DF417A0893
+        apt-get update && sudo apt-get install azure-cli
+        ;;
+    login)
+        az login
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+        
+    

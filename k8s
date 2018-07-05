@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# create 3 nodes kubernetes cluster + master on ec2
+#
+
+m="km"
+s="kn1 kn2 kn3"
+
+type="t2.medium" disks="" ./ec2 create $m
+./ec2 ssh $m < run/k8s-master.sh
+join=$(./ec2 ssh $m "cat /tmp/kubeadm-join.sh")
+
+for n in $s
+do 
+    type="m5.4xlarge" disks="f g h i" ./ec2 create $n
+    ./ec2 ssh $n < run/k8s-node.sh
+    ./ec2 ssh $n "sudo $join"
+done
+
+./ec2 ssh $m < run/instk8spx

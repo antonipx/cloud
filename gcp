@@ -1,0 +1,66 @@
+#!/bin/bash -e
+
+: ${zone:="us-central1-a"}
+: ${proj:="portworx-eng"}
+: ${type:="n1-standard-4"}
+: ${image:="ubuntu-1604-xenial-v20180612"}
+: ${image_prj:="ubuntu-os-cloud"}
+: ${boot_size:="60"}
+: ${boot_type:="pd-ssd"}
+: ${data_size="100"}
+: ${data_type:="pd-ssd"}
+: ${owner:="as"}
+
+usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
+check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+for cmd in gcloud curl; do check $cmd; done
+
+account=$(gcloud info | awk '/^Account:/ { gsub(/(\[|\])/, "", $2); print $2; }')
+[ $account ] || { echo "GCP Account Info Not Found"; exit 1; }
+
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+gcloud config set compute/zone $zone &>/dev/null
+gcloud config set project $proj &>/dev/null
+
+case $1 in
+    create)
+        gcloud compute instances create ${2:?USAGE: Name not specified} \
+        --boot-disk-auto-delete \
+        --boot-disk-size=${boot_size}GB \
+        --boot-disk-type=${boot_type} \
+        --image=${image} \
+        --image-project=${image_prj} \
+        --labels=owner=${owner}
+        
+        [ ${data_size} ] && gcloud compute disks create ${2}-d1 --size=${data_size}GB --type=${data_type} && \
+                            gcloud compute instances attach-disk ${2} --disk ${2}-d1
+
+        ;;
+    delete)
+        gcloud compute instances delete ${2:?USAGE: Name not specified} --delete-disks=all
+        ;;
+    ssh)
+        name=${2:?USAGE: Name not specified}
+        shift 2
+        gcloud compute ssh $name $@
+        ;;
+    list)
+        gcloud compute instances list --filter="zone:( ${zone} ) AND labels.owner=${owner}"
+        ;;
+    login)
+        gcloud auth login
+        ;;
+    setup)
+        export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+        echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+        sudo apt-get update && sudo apt-get install google-cloud-sdk
+        gcloud init
+        ;;
+    *)
+        usage
+        ;;
+esac
+
+        
+    

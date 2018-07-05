@@ -1,0 +1,11 @@
+sudo -i
+systemctl stop portworx; systemctl disable portworx
+yes | /opt/pwx/bin/pxctl sv nw --all
+rm -f /etc/systemd/system/portworx*.service
+/opt/pwx/bin/runc kill portworx
+/opt/pwx/bin/runc delete portworx
+grep -q '/opt/pwx/oci /opt/pwx/oci' /proc/self/mountinfo && umount /opt/pwx/oci
+chattr -ie /etc/pwx/.private.json
+rm -fr /opt/pwx; rm -fr /etc/pwx
+rm -fr /var/cores/*
+#reboot
