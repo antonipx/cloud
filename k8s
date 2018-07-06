@@ -12,7 +12,7 @@ join=$(./ec2 ssh $m "cat /tmp/kubeadm-join.sh")
 
 for n in $s
 do 
-    type="m5.4xlarge" disks="f g h i" ./ec2 create $n
+    type="m5.4xlarge" ./ec2 create $n
     ./ec2 ssh $n < run/k8s-node.sh
     ./ec2 ssh $n "sudo $join"
 done
