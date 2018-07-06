@@ -6,7 +6,7 @@
 m="km"
 s="kn1 kn2 kn3"
 
-type="t2.medium" disks="" ./ec2 create $m
+type="t2.medium" data_size="" ./ec2 create $m
 ./ec2 ssh $m < run/k8s-master.sh
 join=$(./ec2 ssh $m "cat /tmp/kubeadm-join.sh")
 
