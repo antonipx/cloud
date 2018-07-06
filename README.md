@@ -1,5 +1,5 @@
-A bunch of dirty little shell hacks to manage cloud instances
-=============================================================
+Shell hacks to manage cloud instances
+=====================================
 
 Scripts
 -------
