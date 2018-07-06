@@ -1,8 +1,7 @@
 #!/bin/bash -e
 
 : ${type:="t2.medium"}
-: ${disks="f"}
-: ${data_size:="100"}
+: ${data_size="100"}
 : ${data_type:="gp2"}
 : ${data_iops:=""}
 : ${boot_size:="60"}
@@ -26,9 +25,10 @@ case $1 in
         echo "sed -i\"\" \"s/127.0.0.1 localhost/127.0.0.1 localhost ${2:?USAGE: Name not specified}/\" /etc/hosts" >> $tmp
         echo "hostnamectl set-hostname ${2}" >> $tmp
         bdm="[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
-        for d in $disks; do bdm="${bdm},{\"DeviceName\":\"/dev/xvd${d}\",\"Ebs\":{\"VolumeSize\":${data_size},\"VolumeType\":\"${data_type}\",${data_iops:+\"Iops\":$data_iops,}\"DeleteOnTermination\":true}}"; done
+        l=({e..z}); n=0;
+        for d in ${data_size}; do bdm="${bdm},{\"DeviceName\":\"/dev/xvd${l[$((n+=1))]}\",\"Ebs\":{\"VolumeSize\":${d},\"VolumeType\":\"${data_type}\",${data_iops:+\"Iops\":$data_iops,}\"DeleteOnTermination\":true}}";  done
         bdm="${bdm}]"
-        #echo $bdm
+        #echo $bdm;exit
         aws ec2 run-instances --count 1 \
             --instance-type $type --image-id $ami  \
             --key-name $key \
@@ -71,7 +71,6 @@ case $1 in
         | awk -v s=$2 '{ if($1 !~ /None/ && $3 ~ s) print $3, $2, $1 }' \
         | sort 
         ;;
-
     addvol)
         [ $# -ne 2 ] && usage
         ID=$(aws ec2 describe-instances \
@@ -85,8 +84,6 @@ case $1 in
         | { sleep 15; cat; } \
         | xargs -r aws ec2  attach-volume --device /dev/xvdf --instance-id ${ID} --volume-id 
         ;;
-
-
     addmulvol)
         [ $# -ne 2 ] && usage
         ID=$(aws ec2 describe-instances \
