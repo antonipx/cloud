@@ -78,19 +78,6 @@ case $1 in
             --query 'Reservations[].Instances[].[InstanceId]' \
             --output text )
         echo ${ID:?Instance ID Not Found}
-        aws ec2 create-volume --availability-zone $zone --size ${data_size} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
-        --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=${owner}vol},{Key=Owner,Value=${owner}}]" \
-        | jq '.VolumeId' \
-        | { sleep 15; cat; } \
-        | xargs -r aws ec2  attach-volume --device /dev/xvdf --instance-id ${ID} --volume-id 
-        ;;
-    addmulvol)
-        [ $# -ne 2 ] && usage
-        ID=$(aws ec2 describe-instances \
-            --filters Name=tag:Name,Values=$2 \
-            --query 'Reservations[].Instances[].[InstanceId]' \
-            --output text )
-        echo ${ID:?Instance ID Not Found}
         for dev in f h i j k l
         do
             aws ec2 create-volume --availability-zone $zone --size ${data_size} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
