@@ -32,7 +32,7 @@ Examples
 ```
 
 ## To create specific instance / disk type
-`type="m5.4xlarge" disks="f g h i" size="256" voltype="io1" iops="1500" ./ec2 create foobar`
+`type="m5.4xlarge" disks="f g h i" data_size="256" data_type="io1" data_iops="1500" ./ec2 create foobar`
 
 ## If you don't want any data disks set it to empty string ""
 `disks="" ./ec2 create foobar`
@@ -48,7 +48,7 @@ Examples
 `for n in {0..7}; do ./ec2 ssh foobar$n < run/instpx; done`
 
 ## To install Kubernetes cluster with Portworx
-see ./k8s example script
+see `./k8s` example script
 
 
 Remarks
