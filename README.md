@@ -53,8 +53,8 @@ see `./k8s` example script
 
 Remarks
 -------
-gcp does not support startup script yet (TODO)
-esx is not finished (TODO)
-delete command will delete any node regardless of ownership
-gcp and az do not support multiple disks (TODO)
-ec2 multi disk should be taken from size array instead of disk letter array
+* gcp does not support startup script yet (TODO)
+* esx is not finished (TODO)
+* delete command will delete any node regardless of ownership
+* gcp and az do not support multiple disks (TODO)
+* ec2 multi disk should be taken from size array instead of disk letter array
