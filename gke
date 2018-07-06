@@ -29,8 +29,11 @@ case $1 in
             nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
             
             for node in $nodes; do
-                gcloud compute disks create ${node}-d1 --size=${data_size}GB --type=${data_type}
-                gcloud compute instances attach-disk ${node} --disk ${node}-d1
+                n=0; for d in ${data_size}; do 
+                    gcloud compute disks create ${node}-d${n} --size=${data_size}GB --type=${data_type}
+                    gcloud compute instances attach-disk ${node} --disk ${node}-d${n}
+                    n=$((n+1))
+                done
             done
         fi
 
