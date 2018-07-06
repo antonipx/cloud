@@ -32,7 +32,11 @@ Examples
 ```
 
 ## To create specific instance / disk type
-`type="m5.4xlarge" disks="f g h i" data_size="256" data_type="io1" data_iops="1500" ./ec2 create foobar`
+`type="m5.4xlarge" data_size="256" data_type="io1" data_iops="1500" ./ec2 create foobar`
+
+## Create instance with 4 disks (only ec2 for now)
+`data_size="200 200 200 220" ./ec2 create foobar`
+
 
 ## If you don't want any data disks set it to empty string ""
 `disks="" ./ec2 create foobar`
