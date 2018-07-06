@@ -48,7 +48,7 @@ Examples
 `for n in {0..7}; do ./ec2 ssh foobar$n < run/instpx; done`
 
 ## To install Kubernetes cluster with Portworx
-see `./k8s` example script
+see [k8s](https://github.com/antonipx/cloud/blob/master/k8s) example script
 
 
 Remarks
