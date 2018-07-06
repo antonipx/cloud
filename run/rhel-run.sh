@@ -35,4 +35,6 @@ EOT
 #systemctl enable portworx
 #systemctl start portworx
 
-echo "Done"
+
+touch /var/lib/cloud/instance/user-init-finished
+

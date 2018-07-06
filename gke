@@ -28,9 +28,9 @@ case $1 in
             igrp=$(gcloud container clusters describe $2 | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }')
             nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
             
-            n=0; for node in $nodes; do
-                gcloud compute disks create ${2}-d${n} --size=${data_size}GB --type=${data_type}
-                gcloud compute instances attach-disk ${node} --disk ${2}-d$(($n+1))
+            for node in $nodes; do
+                gcloud compute disks create ${node}-d1 --size=${data_size}GB --type=${data_type}
+                gcloud compute instances attach-disk ${node} --disk ${node}-d1
             done
         fi
 
@@ -45,8 +45,8 @@ case $1 in
 
         gcloud container clusters delete $2 
 
-        n=0; for node in $nodes; do
-            gcloud compute disks delete ${2}-d$(($n+1))
+        for node in $nodes; do
+            gcloud compute disks delete ${node}-d1
         done
         ;;
     nodes)

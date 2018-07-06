@@ -34,9 +34,8 @@ Examples
 ## To create specific instance / disk type
 `type="m5.4xlarge" data_size="256" data_type="io1" data_iops="1500" ./ec2 create foobar`
 
-## Create instance with 4 disks (only ec2 for now)
+## Create instance with 4 disks
 `data_size="200 200 200 220" ./ec2 create foobar`
-
 
 ## If you don't want any data disks set it to empty string ""
 `disks="" ./ec2 create foobar`
@@ -57,8 +56,6 @@ see [k8s](https://github.com/antonipx/cloud/blob/master/k8s) example script
 
 Remarks
 -------
-* gcp does not support startup script yet (TODO)
 * esx is not finished (TODO)
 * delete command will delete any node regardless of ownership
-* gcp and az do not support multiple disks (TODO)
-* ec2 multi disk should be taken from size array instead of disk letter array
+* az does not support multiple disks (TODO)

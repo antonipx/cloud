@@ -29,6 +29,7 @@ case $1 in
         for d in ${data_size}; do bdm="${bdm},{\"DeviceName\":\"/dev/xvd${l[$((n+=1))]}\",\"Ebs\":{\"VolumeSize\":${d},\"VolumeType\":\"${data_type}\",${data_iops:+\"Iops\":$data_iops,}\"DeleteOnTermination\":true}}";  done
         bdm="${bdm}]"
         #echo $bdm;exit
+        
         aws ec2 run-instances --count 1 \
             --instance-type $type --image-id $ami  \
             --key-name $key \
@@ -40,8 +41,8 @@ case $1 in
             #| xargs -r aws ec2 describe-instances --instance-ids  \
             #| jq -r '.Reservations[].Instances[].PublicIpAddress,.Reservations[].Instances[].InstanceId'
         rm -f $tmp
-        set +e
-        until $0 ssh $2 '[ -f /var/lib/cloud/instance/boot-finished ]' &>/dev/null; do sleep 20; done
+        
+        set +e; until $0 ssh $2 '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 30; done
         ;;
     delete)
         ID=$(aws ec2 describe-instances \

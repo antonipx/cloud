@@ -7,7 +7,7 @@
 : ${user:="as"}
 : ${owner:="as"}
 : ${key:="@~/.ssh/id_rsa.pub"}
-: ${script:="ubuntu-run.sh"}
+: ${script:="run/ubuntu-run.sh"}
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -17,15 +17,16 @@ case $1 in
     create)
         az vm create \
             -n ${2:?USAGE: Name not specified} \
-            --size $type \
-            -g $rg \
-            --image $img \
+            --size ${type} \
+            -g ${rg} \
+            --image ${img} \
             ${data_size:+--data-disk-sizes-gb ${data_size}} \
             --storage-sku Premium_LRS \
-            --admin-username $user \
-            --ssh-key-value $key \
-            --custom-data $script \
+            --admin-username ${user} \
+            --ssh-key-value ${key} \
             --tags owner=${owner}
+            
+        az vm run-command invoke -g ${rg} -n ${2} --command-id RunShellScript --scripts @${script}
         ;;
     delete)
         : ${2:?USAGE: Name not specified}

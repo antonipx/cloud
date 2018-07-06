@@ -5,6 +5,7 @@
 : ${type:="n1-standard-4"}
 : ${image:="ubuntu-1604-xenial-v20180612"}
 : ${image_prj:="ubuntu-os-cloud"}
+: ${script:="run/ubuntu-run.sh"}
 : ${boot_size:="60"}
 : ${boot_type:="pd-ssd"}
 : ${data_size="100"}
@@ -30,11 +31,16 @@ case $1 in
         --boot-disk-type=${boot_type} \
         --image=${image} \
         --image-project=${image_prj} \
+        --metadata-from-file startup-script=${script} \
         --labels=owner=${owner}
         
-        [ ${data_size} ] && gcloud compute disks create ${2}-d1 --size=${data_size}GB --type=${data_type} && \
-                            gcloud compute instances attach-disk ${2} --disk ${2}-d1
+        n=0; for d in ${data_size}; do 
+            gcloud compute disks create ${2}-d${n} --size=${d}GB --type=${data_type}
+            gcloud compute instances attach-disk ${2} --disk ${2}-d${n}
+            n=$((n+1))
+        done
 
+        set +e; until $0 ssh $2 '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 30; done
         ;;
     delete)
         gcloud compute instances delete ${2:?USAGE: Name not specified} --delete-disks=all
@@ -42,7 +48,7 @@ case $1 in
     ssh)
         name=${2:?USAGE: Name not specified}
         shift 2
-        gcloud compute ssh $name $@
+        gcloud compute ssh ${name} --command="$*"
         ;;
     list)
         gcloud compute instances list --filter="zone:( ${zone} ) AND labels.owner=${owner}"
