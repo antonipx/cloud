@@ -5,9 +5,15 @@
 : ${kver:="1.9.7-gke.3"}
 : ${etcd:="http://etcdv3-01.portworx.com:2379"}
 : ${boot_size:="60"} 
+: ${boot_type:="pd-ssd"} 
 : ${data_size="100"}
-: ${data_type="pd-ssd"}
+: ${data_type:="pd-ssd"}
 : ${px="true"}
+: ${nodes:="3"}
+: ${type:="n1-standard-1"}
+: ${image:="UBUNTU"}
+: ${local_ssd:="0"}
+: ${owner:="as"}
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -22,8 +28,19 @@ gcloud config set project $proj &>/dev/null
 
 case $1 in
     create)
-        gcloud container clusters create ${2:?USAGE: Name not specified} --image-type=UBUNTU  --disk-size=$boot --cluster-version=${kver}
-        
+        gcloud container clusters create \
+            ${2:?USAGE: Name not specified} \
+            --machine-type ${type} \
+            --num-nodes ${nodes} \
+            --image-type ${image}  \
+            --disk-size ${boot_size} \
+            --disk-type ${boot_type}  \
+            --local-ssd-count ${local_ssd} \
+            --cluster-version=${kver} \
+            --enable-cloud-logging \
+            --enable-cloud-monitoring \
+            --labels=owner=${owner}
+
         if [ ${data_size} ]; then
             igrp=$(gcloud container clusters describe $2 | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }')
             nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
@@ -39,28 +56,37 @@ case $1 in
 
         gcloud container clusters get-credentials $2
         kubectl create clusterrolebinding myname-cluster-admin-binding --clusterrole=cluster-admin --user=$account
-        [ ${px} ] && kubectl apply -f "http://install.portworx.com/?type=oci&c=${2}&k=etcd:${etcd}&d=eth0&m=eth0&kbver=${kver}&f=true"
+        [ "${px}" == "true" ] && kubectl apply -f "http://install.portworx.com/?type=oci&c=${2}&k=etcd:${etcd}&d=eth0&m=eth0&kbver=${kver}&f=true"
         kubectl get pods -n kube-system
         ;;
     delete)
         igrp=$(gcloud container clusters describe ${2:?USAGE: Name not specified} | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }')
         nodes=$(gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }')
 
+        set +e
         gcloud container clusters delete $2 
 
         for node in $nodes; do
-            gcloud compute disks delete ${node}-d1
+            n=0; for d in ${data_size}; do 
+                gcloud compute disks delete ${node}-d${n}
+            n=$((n+1))
+            done
         done
+        ;;
+    clusters)
+        gcloud container clusters list
         ;;
     nodes)
         igrp=$(gcloud container clusters describe ${2:?USAGE: Name not specified} | awk -v FS=/ '/instanceGroupManagers/ { print $NF; exit; }' )
         gcloud compute instance-groups list-instances $igrp --uri | awk -v FS=/ '{ print $NF; }'
         ;;
     ssh)
-        gcloud compute ssh ${2:?USAGE: Name not specified}
+        name=${2:?USAGE: Name not specified}
+        shift 2
+        gcloud compute ssh ${name} --command="$*"
         ;;
-    clusters)
-        gcloud container clusters list
+    auth)
+        gcloud container clusters get-credentials $2
         ;;
     *)
         usage

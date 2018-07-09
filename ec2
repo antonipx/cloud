@@ -61,7 +61,7 @@ case $1 in
         aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} 
         ;;
     ssh)
-        IP=$(aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} --query 'Reservations[].Instances[].[PublicIpAddress]' --output text)
+        IP=$(aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} --query 'Reservations[].Instances[].[PublicIpAddress][0]' --output text)
         shift 2
         ssh ${sshopt} -t ${user}@${IP:?Unable to find instance} $@
         ;;
