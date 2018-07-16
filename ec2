@@ -74,14 +74,11 @@ case $1 in
         ;;
     addvol)
         [ $# -ne 2 ] && usage
-        ID=$(aws ec2 describe-instances \
-            --filters Name=tag:Name,Values=$2 \
-            --query 'Reservations[].Instances[].[InstanceId]' \
-            --output text )
+        ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=$2 --query 'Reservations[].Instances[].[InstanceId]' --output text )
         echo ${ID:?Instance ID Not Found}
-        for dev in f h i j k l
+        for dev in ${data_size}
         do
-            aws ec2 create-volume --availability-zone $zone --size ${data_size} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
+            aws ec2 create-volume --availability-zone $zone --size ${d} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
             --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=${owner}vol},{Key=Owner,Value=${owner}}]" \
             | jq '.VolumeId' \
             | { sleep 15; cat; } \
