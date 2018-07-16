@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-: ${zone:="us-central1-a"}
+: ${zone:="us-west1-a"}
 : ${proj:="portworx-eng"}
 : ${kver:="1.9.7-gke.3"}
 : ${etcd:="http://etcdv3-01.portworx.com:2379"}
