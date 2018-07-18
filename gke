@@ -56,7 +56,7 @@ case $1 in
 
         gcloud container clusters get-credentials $2
         kubectl create clusterrolebinding myname-cluster-admin-binding --clusterrole=cluster-admin --user=$account
-        [ "${px}" == "true" ] && kubectl apply -f "http://install.portworx.com/?type=oci&c=${2}&k=etcd:${etcd}&d=eth0&m=eth0&kbver=${kver}&f=true"
+        [ "${px}" == "true" ] && kubectl apply -f "http://install.portworx.com/?type=oci&c=${2}-$(cat /proc/sys/kernel/random/uuid | cut -f1 -d-)&k=etcd:${etcd}&d=eth0&m=eth0&kbver=${kver}&f=true"
         kubectl get pods -n kube-system
         ;;
     delete)
