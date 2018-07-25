@@ -5,9 +5,10 @@ Scripts
 -------
 * az - azure
 * ec2 - aws ec2
-* esx - vmware esx (unfinished)
+* esx - vmware esx via ssh
 * gcp - google
 * gke - googke k8s
+* vcs - vmware vcenter server
 
 
 Usage
@@ -51,7 +52,7 @@ Examples
 `for n in {0..7}; do ./ec2 ssh foobar$n < run/instpx; done`
 
 ## To install Kubernetes cluster with Portworx
-see [k8s](https://github.com/antonipx/cloud/blob/master/k8s) example script
+see [k8s](https://github.com/antonipx/cloud/blob/master/run/ec2-k8s.sh) example script
 
 
 Remarks
