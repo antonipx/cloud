@@ -98,10 +98,16 @@ EOF
     getip)
         name=${2:?No VM name specified}
         ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
-vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | grep ipAddress
+vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
 EOF
         ;;
     ssh)
+        name=${2:?No VM name specified}
+        IP=$(ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
+vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
+EOF
+)
+        ssh -t ubuntu@${IP}
         ;;
     list)
         ;;
