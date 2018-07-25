@@ -1,0 +1,115 @@
+#!/bin/bash -e
+
+# http://www.vm-help.com/esx40i/manage_without_VI_client_1.php
+
+export ESX_HOST="70.0.0.67"
+export ESX_USER="root"
+export ESX_PATH="/vmfs/volumes/HDD"
+
+cpus="2"
+mem="4096"
+boot_disk="30GB"
+data_disk="100GB"
+iso="ISOs/ubuntu-16.04.4-server-amd64-unattended.iso"
+type="ubuntu64Guest"
+
+
+
+
+usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
+check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+for cmd in $GOVC; do check $cmd; done
+
+
+case $1 in
+    create)
+        name=${2:?No VM name specified}
+        ssh ${ESX_USER}@${ESX_HOST} <<EOF
+mkdir ${ESX_PATH}/${name}
+{
+echo "config.version = \"8\""
+echo "virtualHW.version = \"13\""
+echo "vmci0.present = \"TRUE\""
+echo "numvcpus = \"${cpus}\""
+echo "memSize = \"${mem}\""
+echo "bios.bootDelay = \"10000\""
+echo "bios.bootRetry.delay = \"10\""
+echo "sata0.present = \"TRUE\""
+echo "usb.present = \"TRUE\""
+echo "scsi0.virtualDev = \"pvscsi\""
+echo "scsi0.present = \"TRUE\""
+echo "scsi0:0.present = \"TRUE\""
+echo "scsi0:0.deviceType = \"scsi-hardDisk\""
+echo "scsi0:0.fileName = \"${name}_0.vmdk\""
+echo "ehci.present = \"TRUE\""
+echo "ethernet0.virtualDev = \"vmxnet3\""
+echo "ethernet0.networkName = \"VM Network\""
+echo "ethernet0.addressType = \"generated\""
+echo "ethernet0.present = \"TRUE\""
+echo "displayName = \"${name}\""
+echo "guestOS = \"ubuntu-64\""
+echo "tools.syncTime = \"TRUE\""
+echo "cleanShutdown = \"TRUE\""
+echo "hpet0.present = \"TRUE\""
+echo "svga.present = \"TRUE\""
+echo "pciBridge0.present = \"TRUE\""
+echo "pciBridge4.present = \"TRUE\""
+echo "pciBridge4.virtualDev = \"pcieRootPort\""
+echo "pciBridge4.functions = \"8\""
+echo "pciBridge5.present = \"TRUE\""
+echo "pciBridge5.virtualDev = \"pcieRootPort\""
+echo "pciBridge5.functions = \"8\""
+echo "pciBridge6.present = \"TRUE\""
+echo "pciBridge6.virtualDev = \"pcieRootPort\""
+echo "pciBridge6.functions = \"8\""
+echo "pciBridge7.present = \"TRUE\""
+echo "pciBridge7.virtualDev = \"pcieRootPort\""
+echo "pciBridge7.functions = \"8\""
+echo "pciBridge0.pciSlotNumber = \"17\""
+echo "pciBridge4.pciSlotNumber = \"21\""
+echo "pciBridge5.pciSlotNumber = \"22\""
+echo "pciBridge6.pciSlotNumber = \"23\""
+echo "pciBridge7.pciSlotNumber = \"24\""
+echo "scsi0.pciSlotNumber = \"16\""
+echo "usb.pciSlotNumber = \"32\""
+echo "ethernet0.pciSlotNumber = \"160\""
+echo "ehci.pciSlotNumber = \"33\""
+echo "vmci0.pciSlotNumber = \"34\""
+echo "sata0.pciSlotNumber = \"35\""
+echo "softPowerOff = \"FALSE\""
+echo "nvram = \"${name}.nvram\""
+echo "sata0:0.deviceType = \"cdrom-image\""
+echo "sata0:0.fileName = \"${ESX_PATH}/${iso}\""
+echo "sata0:0.present = \"TRUE\""
+} > "${ESX_PATH}/${name}/${name}.vmx"
+vmkfstools -c 30GB -d thin "${ESX_PATH}/${name}/${name}_0.vmdk"
+ID=\$(vim-cmd solo/registervm "${ESX_PATH}/${name}/${name}.vmx")
+vim-cmd vmsvc/power.on \$ID
+EOF
+        ;;
+    delete)
+        name=${2:?No VM name specified}
+        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
+ID=\$(vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }')
+vim-cmd vmsvc/power.off \$ID
+vim-cmd vmsvc/destroy \$ID
+EOF
+        ;;
+    getip)
+        name=${2:?No VM name specified}
+        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
+vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | grep ipAddress
+EOF
+        ;;
+    ssh)
+        ;;
+    list)
+        ;;
+    info)
+        ;;
+
+    *)
+        usage
+        ;;
+esac
+
