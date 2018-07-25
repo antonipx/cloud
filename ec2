@@ -61,7 +61,7 @@ case $1 in
         aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} 
         ;;
     ssh)
-        IP=$(aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} --query 'Reservations[].Instances[].[PublicIpAddress][0]' --output text)
+        IP=$(aws ec2 describe-instances --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} --query 'Reservations[].Instances[].[PublicIpAddress][]' --output text)
         shift 2
         ssh ${sshopt} -t ${user}@${IP:?Unable to find instance} $@
         ;;
@@ -75,6 +75,12 @@ case $1 in
     addvol)
         [ $# -ne 2 ] && usage
         ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=$2 --query 'Reservations[].Instances[].[InstanceId]' --output text )
+
+        v="$(aws ec2 describe-instances --instance-ids ${ID} --query 'Reservations[].Instances[].BlockDeviceMappings[].DeviceName' --output text | tail -1)"
+        l="${v: -1}"
+
+        exit
+
         echo ${ID:?Instance ID Not Found}
         for dev in ${data_size}
         do
