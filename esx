@@ -47,6 +47,7 @@ echo "ethernet0.networkName = \"VM Network\""
 echo "ethernet0.addressType = \"generated\""
 echo "ethernet0.present = \"TRUE\""
 echo "displayName = \"${name}\""
+echo "guestinfo.hostname = \"${name}\""
 echo "guestOS = \"ubuntu-64\""
 echo "tools.syncTime = \"TRUE\""
 echo "cleanShutdown = \"TRUE\""
@@ -110,6 +111,9 @@ EOF
         ssh -t ubuntu@${IP}
         ;;
     list)
+        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
+vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0) print \$2 }'
+EOF
         ;;
     info)
         ;;
