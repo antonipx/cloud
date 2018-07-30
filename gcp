@@ -3,7 +3,7 @@
 : ${zone:="us-central1-a"}
 : ${proj:="portworx-eng"}
 : ${type:="n1-standard-4"}
-: ${image:="ubuntu-1604-xenial-v20180627"}
+: ${image:="ubuntu-1604-xenial-v20180724"}
 : ${image_prj:="ubuntu-os-cloud"}
 : ${script:="run/ubuntu-run.sh"}
 : ${boot_size:="60"}
@@ -26,21 +26,26 @@ gcloud config set project $proj &>/dev/null
 
 case $1 in
     create)
-        n=0; for d in ${data_size}; do 
-            disks="${disks} --create-disk=mode=rw,auto-delete=yes,size=${d},type=${data_type},name=${2}-${n}"
-            n=$((n+1))
-        done
+        #n=0; for d in ${data_size}; do 
+        #    disks="${disks} --disk=mode=rw,auto-delete=yes,size=${d},type=${data_type},name=${2}-${n}"
+        #    n=$((n+1))
+        #done
 
-        gcloud beta compute instances create ${2:?USAGE: Name not specified} \
+        gcloud compute instances create ${2:?USAGE: Name not specified} \
         --boot-disk-auto-delete \
         --boot-disk-size=${boot_size}GB \
         --boot-disk-type=${boot_type} \
         ${local_ssd:+--local-ssd=interface=${local_ssd}} \
-        ${disks} \
         --image=${image} \
         --image-project=${image_prj} \
         --metadata-from-file startup-script=${script} \
         --labels=owner=${owner}
+
+        n=0; for d in ${data_size}; do 
+            gcloud compute disks create ${2}-d${n} --size=${d}GB --type=${data_type}
+            gcloud compute instances attach-disk ${2} --disk ${2}-d${n}
+            n=$((n+1))
+        done
         
         set +e; until $0 ssh $2 '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 30; done
         ;;
