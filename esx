@@ -2,9 +2,9 @@
 
 # http://www.vm-help.com/esx40i/manage_without_VI_client_1.php
 
-export ESX_HOST="70.0.0.67"
-export ESX_USER="root"
-export ESX_PATH="/vmfs/volumes/HDD"
+ESX_HOST="70.0.0.67"
+ESX_USER="root"
+ESX_PATH="/vmfs/volumes/HDD"
 
 cpus="2"
 mem="4096"
@@ -12,9 +12,6 @@ boot_disk="30GB"
 data_disk="100GB"
 iso="ISOs/ubuntu-16.04.4-server-amd64-unattended.iso"
 type="ubuntu64Guest"
-
-
-
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -83,7 +80,7 @@ echo "sata0:0.deviceType = \"cdrom-image\""
 echo "sata0:0.fileName = \"${ESX_PATH}/${iso}\""
 echo "sata0:0.present = \"TRUE\""
 } > "${ESX_PATH}/${name}/${name}.vmx"
-vmkfstools -c 30GB -d thin "${ESX_PATH}/${name}/${name}_0.vmdk"
+vmkfstools -c ${boot_disk} -d thin "${ESX_PATH}/${name}/${name}_0.vmdk"
 ID=\$(vim-cmd solo/registervm "${ESX_PATH}/${name}/${name}.vmx")
 vim-cmd vmsvc/power.on \$ID
 EOF
@@ -114,8 +111,6 @@ EOF
         ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
 vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0) print \$2 }'
 EOF
-        ;;
-    info)
         ;;
 
     *)
