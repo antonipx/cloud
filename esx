@@ -14,8 +14,8 @@ iso="ISOs/ubuntu-16.04.4-server-amd64-unattended.iso"
 type="ubuntu64Guest"
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
-check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
-for cmd in $GOVC; do check $cmd; done
+#check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+#for cmd in ....; do check $cmd; done
 
 
 case $1 in
