@@ -112,7 +112,9 @@ EOF
 vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0) print \$2 }'
 EOF
         ;;
-
+    pushiso)
+        scp ${2:?No ISO file name specified} ${ESX_USER}@${ESX_HOST}:${ESX_PATH}/${iso}
+        ;;
     *)
         usage
         ;;
