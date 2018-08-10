@@ -32,6 +32,7 @@ case $1 in
         #done
 
         gcloud compute instances create ${2:?USAGE: Name not specified} \
+        --machine-type=${type} \
         --boot-disk-auto-delete \
         --boot-disk-size=${boot_size}GB \
         --boot-disk-type=${boot_type} \
