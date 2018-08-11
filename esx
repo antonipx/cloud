@@ -1,22 +1,20 @@
 #!/bin/bash -e
 
-# http://www.vm-help.com/esx40i/manage_without_VI_client_1.php
-
 ESX_HOST="70.0.0.67"
 ESX_USER="root"
 ESX_PATH="/vmfs/volumes/HDD"
 
 cpus="2"
 mem="4096"
-boot_disk="30GB"
 data_disk="100GB"
-iso="ISOs/ubuntu-16.04.4-server-amd64-unattended.iso"
-type="ubuntu64Guest"
+type="ubuntu-64"
+template="/vmfs/volumes/HDD/ubuntu_template/ubuntu_template_0.vmdk"
+user="ubuntu"
+pass="ubuntu"
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
-#check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
-#for cmd in ....; do check $cmd; done
-
+check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
+for cmd in ssh scp sshpass; do check $cmd; done
 
 case $1 in
     create)
@@ -31,13 +29,15 @@ echo "numvcpus = \"${cpus}\""
 echo "memSize = \"${mem}\""
 echo "bios.bootDelay = \"10000\""
 echo "bios.bootRetry.delay = \"10\""
-echo "sata0.present = \"TRUE\""
 echo "usb.present = \"TRUE\""
 echo "scsi0.virtualDev = \"pvscsi\""
 echo "scsi0.present = \"TRUE\""
 echo "scsi0:0.present = \"TRUE\""
 echo "scsi0:0.deviceType = \"scsi-hardDisk\""
 echo "scsi0:0.fileName = \"${name}_0.vmdk\""
+echo "scsi0:1.present = \"TRUE\""
+echo "scsi0:1.deviceType = \"scsi-hardDisk\""
+echo "scsi0:1.fileName = \"${name}_1.vmdk\""
 echo "ehci.present = \"TRUE\""
 echo "ethernet0.virtualDev = \"vmxnet3\""
 echo "ethernet0.networkName = \"VM Network\""
@@ -45,7 +45,7 @@ echo "ethernet0.addressType = \"generated\""
 echo "ethernet0.present = \"TRUE\""
 echo "displayName = \"${name}\""
 echo "guestinfo.hostname = \"${name}\""
-echo "guestOS = \"ubuntu-64\""
+echo "guestOS = \"${type}\""
 echo "tools.syncTime = \"TRUE\""
 echo "cleanShutdown = \"TRUE\""
 echo "hpet0.present = \"TRUE\""
@@ -68,21 +68,41 @@ echo "pciBridge4.pciSlotNumber = \"21\""
 echo "pciBridge5.pciSlotNumber = \"22\""
 echo "pciBridge6.pciSlotNumber = \"23\""
 echo "pciBridge7.pciSlotNumber = \"24\""
-echo "scsi0.pciSlotNumber = \"16\""
+echo "scsi0.pciSlotNumber = \"160\""
 echo "usb.pciSlotNumber = \"32\""
-echo "ethernet0.pciSlotNumber = \"160\""
+echo "ethernet0.pciSlotNumber = \"192\""
 echo "ehci.pciSlotNumber = \"33\""
 echo "vmci0.pciSlotNumber = \"34\""
-echo "sata0.pciSlotNumber = \"35\""
 echo "softPowerOff = \"FALSE\""
 echo "nvram = \"${name}.nvram\""
-echo "sata0:0.deviceType = \"cdrom-image\""
-echo "sata0:0.fileName = \"${ESX_PATH}/${iso}\""
-echo "sata0:0.present = \"TRUE\""
 } > "${ESX_PATH}/${name}/${name}.vmx"
-vmkfstools -c ${boot_disk} -d thin "${ESX_PATH}/${name}/${name}_0.vmdk"
+vmkfstools -i ${template} "${ESX_PATH}/${name}/${name}_0.vmdk" -d thin
+vmkfstools -c ${data_disk} -d thin "${ESX_PATH}/${name}/${name}_1.vmdk"
 ID=\$(vim-cmd solo/registervm "${ESX_PATH}/${name}/${name}.vmx")
 vim-cmd vmsvc/power.on \$ID
+EOF
+        until [ "$IP" ]
+        do
+            IP=$(ssh ${ESX_USER}@${ESX_HOST} <<EOF
+vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
+EOF
+)
+            echo "Waiting for IP..."
+            sleep 15;
+        done
+        sshpass -p ${pass} ssh-copy-id ${user}@${IP}
+        ssh -t ${user}@${IP} <<EOF
+        sudo -i
+        passwd -l ${user}
+        h=\$(vmware-rpctool "info-get guestinfo.hostname")
+        hostnamectl set-hostname \$h
+        echo -e "127.0.0.1\t\$h" >> /etc/hosts
+EOF
+        scp run/ubuntu-run.sh ${user}@${IP}:
+        ssh -t ${user}@${IP} <<EOF
+sudo -i
+chmod 755 /home/ubuntu/ubuntu-run.sh
+/home/ubuntu/ubuntu-run.sh
 EOF
         ;;
     delete)
@@ -105,15 +125,12 @@ EOF
 vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
 EOF
 )
-        ssh -t ubuntu@${IP}
+        ssh -t ${user}@${IP}
         ;;
     list)
         ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
 vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0) print \$2 }'
 EOF
-        ;;
-    pushiso)
-        scp ${2:?No ISO file name specified} ${ESX_USER}@${ESX_HOST}:${ESX_PATH}/${iso}
         ;;
     *)
         usage
