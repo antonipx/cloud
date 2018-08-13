@@ -28,13 +28,7 @@ bind-key -n C-S-Left resize-pane -L 1
 bind-key -n C-S-Right resize-pane -R 1
 EOT
 
-# Portworx
-#
-#docker run --rm --privileged=true --entrypoint /runc-entry-point.sh -v /opt/pwx:/opt/pwx -v /etc/pwx:/etc/pwx portworx/px-enterprise:1.3.1.1
-#/opt/pwx/bin/px-runc install -c $(cat /proc/sys/kernel/random/uuid) -k etcd://etcdv3-02.portworx.com:2379 -a -f
-#systemctl enable portworx
-#systemctl start portworx
-
+ln -s /opt/pwx/bin/pxctl /bin/pxctl
 
 touch /var/lib/cloud/instance/user-init-finished
 
