@@ -37,5 +37,7 @@ bind-key -n C-S-Left resize-pane -L 1
 bind-key -n C-S-Right resize-pane -R 1
 EOT
 
+ln -s /opt/pwx/bin/pxctl /bin/pxctl
+
 touch /var/lib/cloud/instance/user-init-finished
 
