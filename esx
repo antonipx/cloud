@@ -9,6 +9,7 @@ mem="4096"
 data_disk="100GB"
 type="ubuntu-64"
 template="/vmfs/volumes/HDD/ubuntu_template/ubuntu_template_0.vmdk"
+script="ubuntu-run.sh"
 user="ubuntu"
 pass="ubuntu"
 
@@ -81,41 +82,29 @@ vmkfstools -c ${data_disk} -d thin "${ESX_PATH}/${name}/${name}_1.vmdk"
 ID=\$(vim-cmd solo/registervm "${ESX_PATH}/${name}/${name}.vmx")
 vim-cmd vmsvc/power.on \$ID
 EOF
-        until [ "$IP" ]
-        do
-            IP=$(ssh ${ESX_USER}@${ESX_HOST} <<EOF
-vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
-EOF
-)
-            echo "Waiting for IP..."
-            sleep 15;
-        done
+        until [ "$IP" ]; do IP=$($0 getip ${name}); echo "Waiting for IP..."; sleep 15; done
+        ssh-keygen -R ${IP}
         sshpass -p ${pass} ssh-copy-id ${user}@${IP}
-        ssh -t ${user}@${IP} <<EOF
-sudo -i
-passwd -l ${user}
-h=\$(vmware-rpctool "info-get guestinfo.hostname")
-hostnamectl set-hostname \$h
-echo -e "127.0.0.1\t\$h" >> /etc/hosts
-EOF
-        scp run/ubuntu-run.sh ${user}@${IP}:
-        ssh -t ${user}@${IP} <<EOF
-sudo -i
-chmod 755 /home/ubuntu/ubuntu-run.sh
-/home/ubuntu/ubuntu-run.sh
-EOF
+        scp run/${script} ${user}@${IP}:/tmp
+        {
+            echo "sudo -i"
+            echo "passwd -l ${user}"
+            echo "h=\$(vmware-rpctool \"info-get guestinfo.hostname\")"
+            echo "hostnamectl set-hostname \$h"
+            echo "echo -e \"127.0.0.1\t\$h\" >> /etc/hosts"
+            echo "chmod 755 /tmp/${script}"
+            echo "/tmp/${script}"
+        } | ssh -t ${user}@${IP} 
         ;;
     delete)
-        name=${2:?No VM name specified}
-        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
-ID=\$(vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }')
-vim-cmd vmsvc/power.off \$ID
-vim-cmd vmsvc/destroy \$ID
-EOF
+        {
+            echo "ID=\$(vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }')"
+            echo "vim-cmd vmsvc/power.off \$ID"
+            echo "vim-cmd vmsvc/destroy \$ID"
+        } | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     getip)
-        name=${2:?No VM name specified}
-        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     ssh)
         IP=$(${0} getip ${2:?No VM name specified})
