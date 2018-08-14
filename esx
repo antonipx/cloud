@@ -19,7 +19,7 @@ for cmd in ssh scp sshpass; do check $cmd; done
 case $1 in
     create)
         name=${2:?No VM name specified}
-        ssh ${ESX_USER}@${ESX_HOST} <<EOF
+        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
 mkdir ${ESX_PATH}/${name}
 {
 echo "config.version = \"8\""
@@ -92,11 +92,11 @@ EOF
         done
         sshpass -p ${pass} ssh-copy-id ${user}@${IP}
         ssh -t ${user}@${IP} <<EOF
-        sudo -i
-        passwd -l ${user}
-        h=\$(vmware-rpctool "info-get guestinfo.hostname")
-        hostnamectl set-hostname \$h
-        echo -e "127.0.0.1\t\$h" >> /etc/hosts
+sudo -i
+passwd -l ${user}
+h=\$(vmware-rpctool "info-get guestinfo.hostname")
+hostnamectl set-hostname \$h
+echo -e "127.0.0.1\t\$h" >> /etc/hosts
 EOF
         scp run/ubuntu-run.sh ${user}@${IP}:
         ssh -t ${user}@${IP} <<EOF
@@ -115,17 +115,12 @@ EOF
         ;;
     getip)
         name=${2:?No VM name specified}
-        ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
-vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
-EOF
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     ssh)
-        name=${2:?No VM name specified}
-        IP=$(ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
-vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${name}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \" '/ipAddress/ { print \$2 }'
-EOF
-)
-        ssh -t ${user}@${IP}
+        IP=$(${0} getip ${2:?No VM name specified})
+        shift 2
+        ssh -t ${user}@${IP} ${@}
         ;;
     list)
         ssh -t ${ESX_USER}@${ESX_HOST} <<EOF
