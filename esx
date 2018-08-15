@@ -1,17 +1,18 @@
 #!/bin/bash -e
 
-ESX_HOST="70.0.0.67"
-ESX_USER="root"
-ESX_PATH="/vmfs/volumes/HDD"
+: ${ESX_HOST:="70.0.0.67"}
+: ${ESX_USER:="root"}
+: ${ESX_PATH:="/vmfs/volumes/HDD"}
 
-cpus="2"
-mem="4096"
-data_disk="100GB"
-type="ubuntu-64"
-template="/vmfs/volumes/HDD/ubuntu_template/ubuntu_template_0.vmdk"
-script="ubuntu-run.sh"
-user="ubuntu"
-pass="ubuntu"
+: ${cpus:="2"}
+: ${mem:="4096"}
+: ${data_size:="100"}
+: ${owner:="as"}
+: ${type:="ubuntu-64"}
+: ${template:="/vmfs/volumes/HDD/ubuntu_template/ubuntu_template_0.vmdk"}
+: ${script:="ubuntu-run.sh"}
+: ${user:="ubuntu"}
+: ${pass:="ubuntu"}
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -36,10 +37,15 @@ case $1 in
             echo "scsi0:0.present = \"TRUE\""
             echo "scsi0:0.deviceType = \"scsi-hardDisk\""
             echo "scsi0:0.fileName = \"${name}_0.vmdk\""
-            [ "$data_disk" ] && {
-            echo "scsi0:1.present = \"TRUE\""
-            echo "scsi0:1.deviceType = \"scsi-hardDisk\""
-            echo "scsi0:1.fileName = \"${name}_1.vmdk\""
+            [ "$data_size" ] && {
+                n=1
+                for d in $data_size
+                do
+                    echo "scsi0:${n}.present = \"TRUE\""
+                    echo "scsi0:${n}.deviceType = \"scsi-hardDisk\""
+                    echo "scsi0:${n}.fileName = \"${name}_${n}.vmdk\""
+                    let n+=1
+                done
             }
             echo "ehci.present = \"TRUE\""
             echo "ethernet0.virtualDev = \"vmxnet3\""
@@ -78,12 +84,20 @@ case $1 in
             echo "vmci0.pciSlotNumber = \"34\""
             echo "softPowerOff = \"FALSE\""
             echo "nvram = \"${name}.nvram\""
+            echo "annotation = \"owner=${owner}\""
             echo "EOF"
             echo "vmkfstools -i ${template} \"${ESX_PATH}/${name}/${name}_0.vmdk\" -d thin"
-            [ "$data_disk" ] && echo "vmkfstools -c ${data_disk} -d thin \"${ESX_PATH}/${name}/${name}_1.vmdk\""
+            [ "$data_size" ] && {
+                n=1
+                for d in $data_size
+                do
+                    echo "vmkfstools -c \"${d}GB\" -d thin \"${ESX_PATH}/${name}/${name}_${n}.vmdk\""
+                    let n+=1
+                done
+            }
             echo "ID=\$(vim-cmd solo/registervm \"${ESX_PATH}/${name}/${name}.vmx\")"
             echo "vim-cmd vmsvc/power.on \$ID"
-        } |  ssh -T ${ESX_USER}@${ESX_HOST}
+        } | ssh -T ${ESX_USER}@${ESX_HOST}
         until [ "$IP" ]; do IP=$($0 getip ${name}); echo "Waiting for IP..."; sleep 15; done
         ssh-keygen -R ${IP}
         sshpass -p ${pass} ssh-copy-id ${user}@${IP}
@@ -101,7 +115,7 @@ case $1 in
     delete)
         {
             echo "ID=\$(vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }')"
-            echo "vim-cmd vmsvc/power.off \$ID"
+            echo "vim-cmd vmsvc/power.off \${ID:?VM Not found}"
             echo "vim-cmd vmsvc/destroy \$ID"
         } | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
@@ -114,7 +128,7 @@ case $1 in
         ssh -t ${user}@${IP} ${@}
         ;;
     list)
-        echo "vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0) print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        echo "vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0 && \$NF ~ /owner=${owner}/) print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     *)
         usage
