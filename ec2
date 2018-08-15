@@ -38,8 +38,6 @@ case $1 in
             --block-device-mappings ${bdm} \
             --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$2},{Key=Owner,Value=${owner}}]"  \
             | jq -r '.Instances[].InstanceId' 
-            #| xargs -r aws ec2 describe-instances --instance-ids  \
-            #| jq -r '.Reservations[].Instances[].PublicIpAddress,.Reservations[].Instances[].InstanceId'
         rm -f $tmp
         
         set +e; until $0 ssh $2 '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 30; done
