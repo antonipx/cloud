@@ -29,7 +29,7 @@ case $1 in
             echo "vmci0.present = \"TRUE\""
             echo "numvcpus = \"${cpus}\""
             echo "memSize = \"${mem}\""
-            echo "bios.bootDelay = \"10000\""
+            echo "bios.bootDelay = \"0\""
             echo "bios.bootRetry.delay = \"10\""
             echo "usb.present = \"TRUE\""
             echo "scsi0.virtualDev = \"pvscsi\""
@@ -129,6 +129,9 @@ case $1 in
         ;;
     list)
         echo "vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0 && \$NF ~ /owner=${owner}/) print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        ;;
+    setup)
+        cat ~/.ssh/id_rsa.pub | ssh -T ${ESX_USER}@${ESX_HOST}  "cat >> /etc/ssh/keys-root/authorized_keys"
         ;;
     *)
         usage
