@@ -32,6 +32,9 @@ Examples
 ./ec2 delete foobar
 ```
 
+## Create default type instance in ec2
+`./ec2 create foobar`
+
 ## To create specific instance / disk type
 `type="m5.4xlarge" data_size="256" data_type="io1" data_iops="1500" ./ec2 create foobar`
 
@@ -48,15 +51,15 @@ Examples
 ## To run specific commands on a node
 `./ec2 ssh foobar cat /etc/passwd`
 
-## To install Portworx on a bunch of nodes
-`for n in {0..7}; do ./ec2 ssh foobar$n < run/instpx; done`
+## To install Portworx on a bunch of nodes in parallel
+`for n in foobar{0..7}; do ./ec2 ssh $n < run/instpx& done`
 
-## To install Kubernetes cluster with Portworx
+## To spin up Kubernetes cluster with Portworx
 see [k8s](https://github.com/antonipx/cloud/blob/master/run/ec2-k8s.sh) example script
 
 
 Remarks
 -------
-* esx is not finished (TODO)
+* esx requires a "template" vm with open-vm-tools, openssh-server and passwordless sudo
 * delete command will delete any node regardless of ownership
 * az does not support multiple disks (TODO)
