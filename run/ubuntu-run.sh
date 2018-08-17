@@ -12,7 +12,7 @@ apt-get -qy update
 #apt -y upgrade
 
 # utils
-apt -yq install jq htop atop iotop iftop iperf3 dstat
+apt -yq install tmux curl wget jq htop atop iotop iftop iperf3 dstat
 # bwm bmon-ng cbm nethogs ntop
 cd /usr/local/bin; curl https://getmic.ro | bash
 
