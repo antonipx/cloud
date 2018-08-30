@@ -53,6 +53,12 @@ case $1 in
     delete)
         gcloud compute instances delete ${2:?USAGE: Name not specified} --delete-disks=all
         ;;
+    start)
+        gcloud compute instances start ${2:?USAGE: Name not specified}
+        ;;
+    stop)
+        gcloud compute instances stop ${2:?USAGE: Name not specified}
+        ;;
     ssh)
         name=${2:?USAGE: Name not specified}
         shift 2

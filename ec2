@@ -49,6 +49,20 @@ case $1 in
             --output text )
         aws ec2  terminate-instances --instance-ids ${ID:?Instance Not Found}
         ;;
+    start)
+        ID=$(aws ec2 describe-instances \
+            --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} \
+            --query 'Reservations[].Instances[].[InstanceId]' \
+            --output text )
+        aws ec2 start-instances --instance-ids ${ID:?Instance Not Found}
+        ;;
+    stop)
+        ID=$(aws ec2 describe-instances \
+            --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} \
+            --query 'Reservations[].Instances[].[InstanceId]' \
+            --output text )
+        aws ec2 stop-instances --instance-ids ${ID:?Instance Not Found}
+        ;;
     getip)
         aws ec2 describe-instances \
             --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} \

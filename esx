@@ -119,6 +119,15 @@ case $1 in
             echo "vim-cmd vmsvc/destroy \$ID"
         } | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
+    start)
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/power.on" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        ;;
+    stop)
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/power.shutdown" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        ;;
+    halt)
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/power.off" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        ;;
     getip)
         echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;

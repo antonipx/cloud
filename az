@@ -43,6 +43,12 @@ case $1 in
         az network public-ip delete --ids ${ips}
         az network nsg delete --ids ${nsgs}
         ;;
+    start)
+        az vm start -g $rg --name ${2:?USAGE: Name not specified}
+        ;;
+    stop)
+        az vm stop -g $rg --name ${2:?USAGE: Name not specified}
+        ;;
     ssh)
         IP=$(az vm show --name ${2:?USAGE: Name not specified} --resource-group $rg --show-details | jq -r ".publicIps")
         shift 2
