@@ -129,7 +129,7 @@ case $1 in
         echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/power.off" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     getip)
-        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary \$ID | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        echo "vim-cmd vmsvc/getallvms | awk '{ if (\$2 ~ /${2:?No VM name specified}/) print \$1 }' | xargs -r vim-cmd vmsvc/get.summary | awk -F \\\" '/ipAddress/ { print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     ssh)
         IP=$(${0} getip ${2:?No VM name specified})
@@ -137,7 +137,7 @@ case $1 in
         ssh -t ${user}@${IP} ${@}
         ;;
     list)
-        echo "vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0 && \$NF ~ /owner=${owner}/) print \$2 }'" | ssh -T ${ESX_USER}@${ESX_HOST} 
+        echo "for vm in \$(vim-cmd vmsvc/getallvms | awk '{ if(int(\$1) > 0 && \$NF ~ /owner=${owner}/) print \$1 }'); do vim-cmd vmsvc/get.summary \${vm} | awk '{ gsub(/\"|,|=/, \"\"); if(\$1 ~ /(ipAddress|name|powerState)/) v[\$1]=\$2 } END { printf(\"%-20s %-20s %-20s\\n\", v[\"name\"], v[\"ipAddress\"], v[\"powerState\"]) }'; done" | ssh -T ${ESX_USER}@${ESX_HOST} 
         ;;
     setup)
         cat ~/.ssh/id_rsa.pub | ssh -T ${ESX_USER}@${ESX_HOST}  "cat >> /etc/ssh/keys-root/authorized_keys"

@@ -55,7 +55,6 @@ case $1 in
         ssh ${user}@${IP:?Instance Not Found} $@
         ;;
     list)
-        #az vm list -d | jq -c ".[]|select(.tags.owner==\"${owner}\")|[.name,.publicIps]"  
         az vm list -d --query "[?tags.owner=='${owner}'].{Name:name,IP:publicIps}" -o table
         ;;
     setup)
