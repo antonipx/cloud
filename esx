@@ -2,14 +2,14 @@
 
 : ${ESX_HOST:="70.0.0.67"}
 : ${ESX_USER:="root"}
-: ${ESX_PATH:="/vmfs/volumes/HDD"}
+: ${ESX_PATH:="/vmfs/volumes/RAID"}
 
 : ${cpus:="2"}
 : ${mem:="4096"}
 : ${data_size:="100"}
 : ${owner:="as"}
 : ${type:="ubuntu-64"}
-: ${template:="/vmfs/volumes/HDD/ubuntu_template/ubuntu_template_0.vmdk"}
+: ${template:="/vmfs/volumes/SSD/ubuntu_template/ubuntu_template_0.vmdk"}
 : ${script:="ubuntu-run.sh"}
 : ${user:="ubuntu"}
 : ${pass:="ubuntu"}
