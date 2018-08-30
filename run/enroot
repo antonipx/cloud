@@ -1,0 +1,4 @@
+sudo -i
+sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+systemctl restart ssh
+echo "root:Password1" | chpasswd
