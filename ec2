@@ -63,14 +63,14 @@ case $1 in
             --region ${region} \
             --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} \
             --query 'Reservations[].Instances[].[InstanceId]' \
-            --output text 
+            --output text
         ;;
     getip)
         aws ec2 describe-instances \
             --region ${region} \
             --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} \
             --query 'Reservations[].Instances[].[PublicIpAddress][]' \
-            --output text 
+            --output text
         ;;
     describe)
         aws ec2 describe-instances --region ${region} --filters Name=tag:Name,Values=${2:?USAGE: Name not specified} 
