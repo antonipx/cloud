@@ -5,13 +5,14 @@
 : ${data_type:="gp2"}
 : ${data_iops:=""}
 : ${boot_size:="60"}
-: ${zone:="us-west-1a"}
-: ${ami:="ami-925144f2"}
+: ${ostype:="ubuntu16"}
+: ${region:="us-west-2"}
+: ${zone:="a"}
 : ${key:="askey"}
 : ${script:="run/ubuntu-run.sh"}
-: ${subnet:="subnet-1c34085a"}
 : ${owner:="as"}
 : ${user:="ubuntu"}
+
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
