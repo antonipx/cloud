@@ -112,6 +112,25 @@ case $1 in
     config)
         aws configure
         ;;
+    getami)
+        case $2 in
+            ubuntu16)
+                aws ec2 describe-images --region ${region} --filters 'Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            amazon2)
+                aws ec2 describe-images --region ${region} --owners amazon --filters 'Name=name,Values=amzn-ami-hvm-????.??.?.x86_64-gp2' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            rhel75)
+                aws ec2 describe-images --region ${region} --owners amazon --filters 'Name=name,Values=RHEL-7.5_HVM_GA*' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            ami-*)
+                echo ${2}
+            ;;
+            *)
+                echo "Unknown OS Type"
+            ;;
+        esac
+        ;;
     *)
         usage
         ;;
