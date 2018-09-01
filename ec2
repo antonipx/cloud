@@ -18,6 +18,8 @@ usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, ""); 
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
 for cmd in aws jq; do check $cmd; done
 
+set -o pipefail
+
 case $1 in
     create)
         [ $# -ne 2 ] && usage
