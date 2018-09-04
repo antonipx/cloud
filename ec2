@@ -5,11 +5,11 @@
 : ${data_type:="gp2"}
 : ${data_iops:=""}
 : ${boot_size:="60"}
-: ${ostype:="ubuntu16"}
+: ${ostype:="ubuntu"}
 : ${region:="us-west-2"}
 : ${zone:="a"}
 : ${key:="askey"}
-: ${script:="run/ubuntu-run.sh"}
+: ${script:="run/${ostype}-run.sh"}
 : ${owner:="as"}
 : ${user:="ubuntu"}
 
@@ -25,9 +25,9 @@ case $1 in
         [ $# -ne 2 ] && usage
         tmp=$(mktemp)
         cat $script > $tmp
-        echo "sed -i\"\" \"s/127.0.0.1 localhost/127.0.0.1 localhost ${2:?USAGE: Name not specified}/\" /etc/hosts" >> $tmp
-        echo "hostnamectl set-hostname ${2}" >> $tmp
-        bdm="[{\"DeviceName\":\"/dev/sda1\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
+        [ "${ostype}" != "coreos" ] && echo "sed -i\"\" \"s/127.0.0.1 localhost/127.0.0.1 localhost ${2:?USAGE: Name not specified}/\" /etc/hosts" >> $tmp
+        [ "${ostype}" != "coreos" ] && echo "hostnamectl set-hostname ${2}" >> $tmp
+        bdm="[{\"DeviceName\":\"/dev/xvda\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
         l=({e..z}); n=0;
         for d in ${data_size}; do bdm="${bdm},{\"DeviceName\":\"/dev/xvd${l[$((n+=1))]}\",\"Ebs\":{\"VolumeSize\":${d},\"VolumeType\":\"${data_type}\",${data_iops:+\"Iops\":$data_iops,}\"DeleteOnTermination\":true}}";  done
         bdm="${bdm}]"
@@ -44,7 +44,7 @@ case $1 in
             | jq -r '.Instances[].InstanceId' 
 
         rm -f $tmp
-        set +e; until $0 ssh $2 '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 30; done
+        $0 bootwait ${2} ${ostype}
         ;;
     delete)
         ID=$($0 getid ${2:?USAGE: Name not specified})
@@ -80,27 +80,35 @@ case $1 in
         shift 2
         ssh ${sshopt} -t ${user}@${IP:?Unable to find instance} $@
         ;;
+    bootwait)
+        set +e
+        case ${3:?USAGE: os type not specified} in 
+            coreos)
+                until user=core $0 ssh ${2:?USAGE: Name not specified} 'systemd-analyze' &>/dev/null; do sleep 10; done
+                ;;
+            ubuntu)
+                until user=ubuntu $0 ssh ${2:?USAGE: Name not specified} '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 10; done
+                ;;
+            *)
+                until user=ec2-user $0 ssh ${2:?USAGE: Name not specified} '[ -f /var/lib/cloud/instance/user-init-finished ]' &>/dev/null; do sleep 10; done
+                ;;
+        esac
+        ;;
     list)
         aws ec2 describe-instances --region ${region} --filters Name=tag:Owner,Values=${owner} --output json \
         | jq '.Reservations[].Instances[] | select(.State.Name != "terminated") | { Name: (.Tags[]|select(.Key=="Name")|.Value), St:.State.Name, Id:.InstanceId, IP:.PublicIpAddress } | join(" : ") ' | tr -d \"
         ;;
     addvol)
-        [ $# -ne 2 ] && usage
-        ID=$(aws ec2 describe-instances --filters Name=tag:Name,Values=$2 --query 'Reservations[].Instances[].[InstanceId]' --output text )
-
-        v="$(aws ec2 describe-instances --instance-ids ${ID} --query 'Reservations[].Instances[].BlockDeviceMappings[].DeviceName' --output text | tail -1)"
-        l="${v: -1}"
-
-        exit
-
-        echo ${ID:?Instance ID Not Found}
-        for dev in ${data_size}
-        do
-            aws ec2 create-volume --availability-zone "${region}${zone}" --size ${d} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
+        ID=$($0 getid ${2:?USAGE: Name not specified})
+        l=(/dev/xvd{d..z})
+        n="$(aws ec2 describe-instances --region ${region} --instance-ids ${ID} --query 'Reservations[].Instances[].BlockDeviceMappings[].DeviceName' --output json | jq '.[]' | wc -l)"
+        for dev in ${data_size};
+        do 
+            aws ec2 create-volume --region ${region} --availability-zone "${region}${zone}" --size ${d} --volume-type ${data_type} ${data_iops:+--iops $data_iops} \
             --tag-specifications "ResourceType=volume,Tags=[{Key=Name,Value=${owner}vol},{Key=Owner,Value=${owner}}]" \
             | jq '.VolumeId' \
             | { sleep 15; cat; } \
-            | xargs -r aws ec2  attach-volume --device /dev/xvd${dev} --instance-id ${ID} --volume-id 
+            | xargs -r aws ec2  attach-volume --device "${l[$((n+=1))]}" --instance-id ${ID} --volume-id 
         done
         ;;
     setup)
@@ -114,14 +122,29 @@ case $1 in
         ;;
     getami)
         case $2 in
-            ubuntu16)
-                aws ec2 describe-images --region ${region} --filters 'Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+            ubuntu)
+                aws ec2 describe-images --region ${region} \
+                --filters 'Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            coreos)
+                aws ec2 describe-images --region ${region} \
+                --filters 'Name=name,Values=CoreOS-stable-*-hvm' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            rhel)
+                aws ec2 describe-images --region ${region} --owners amazon \
+                --filters 'Name=name,Values=RHEL-7.5_HVM_GA*' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
             amazon2)
-                aws ec2 describe-images --region ${region} --owners amazon --filters 'Name=name,Values=amzn-ami-hvm-????.??.?.x86_64-gp2' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                aws ec2 describe-images --region ${region} --owners amazon \
+                --filters 'Name=name,Values=amzn2-ami-hvm-2.0.????????-x86_64-gp2' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
-            rhel75)
-                aws ec2 describe-images --region ${region} --owners amazon --filters 'Name=name,Values=RHEL-7.5_HVM_GA*' 'Name=state,Values=available' | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+            amazon)
+                aws ec2 describe-images --region ${region} --owners amazon --filters 'Name=name,Values=amzn-ami-hvm-????.??.?.x86_64-gp2' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
             ami-*)
                 echo ${2}
