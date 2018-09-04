@@ -48,6 +48,13 @@ Examples
 `owner="bob" ./ec2 create foobar`
 `owner="bob" ./ec2 list`
 
+## Specific distro
+`ostype=coreos ./ec2 create foobar`
+`user=core ./ec2 ssh foobar`
+
+## Specific AMI
+`ostype=ami-123456 ./ec2 create foobar`
+
 ## To run specific commands on a node
 `./ec2 ssh foobar cat /etc/passwd`
 
