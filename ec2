@@ -24,7 +24,7 @@ case $1 in
     create)
         [ $# -ne 2 ] && usage
         tmp=$(mktemp)
-        cat $script > $tmp
+        set +e; cat $script > $tmp; set -e
         [ "${ostype}" != "coreos" ] && echo "sed -i\"\" \"s/127.0.0.1 localhost/127.0.0.1 localhost ${2:?USAGE: Name not specified}/\" /etc/hosts" >> $tmp
         [ "${ostype}" != "coreos" ] && echo "hostnamectl set-hostname ${2}" >> $tmp
         bdm="[{\"DeviceName\":\"/dev/xvda\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
@@ -84,6 +84,7 @@ case $1 in
         set +e
         case ${3:?USAGE: os type not specified} in 
             coreos)
+                # systemctl status sysinit.target
                 until user=core $0 ssh ${2:?USAGE: Name not specified} 'systemd-analyze' &>/dev/null; do sleep 10; done
                 ;;
             ubuntu)
