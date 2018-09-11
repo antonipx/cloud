@@ -134,7 +134,7 @@ case $1 in
                 | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
             rhel)
-                aws ec2 describe-images --region ${region} --owners amazon \
+                aws ec2 describe-images --region ${region} \
                 --filters 'Name=name,Values=RHEL-7.5_HVM_GA*' 'Name=state,Values=available' \
                 | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
