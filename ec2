@@ -12,6 +12,7 @@
 : ${script:="run/${ostype}-run.sh"}
 : ${owner:="as"}
 : ${user:="ubuntu"}
+: ${boot_dev:="/dev/sda1"}
 
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; } 
@@ -27,10 +28,11 @@ case $1 in
         set +e; cat $script > $tmp; set -e
         [ "${ostype}" != "coreos" ] && echo "sed -i\"\" \"s/127.0.0.1 localhost/127.0.0.1 localhost ${2:?USAGE: Name not specified}/\" /etc/hosts" >> $tmp
         [ "${ostype}" != "coreos" ] && echo "hostnamectl set-hostname ${2}" >> $tmp
-        bdm="[{\"DeviceName\":\"/dev/xvda\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
+        bdm="[{\"DeviceName\":\"${boot_dev}\",\"Ebs\":{\"VolumeSize\":${boot_size},\"DeleteOnTermination\":true}}"
         l=({e..z}); n=0;
         for d in ${data_size}; do bdm="${bdm},{\"DeviceName\":\"/dev/xvd${l[$((n+=1))]}\",\"Ebs\":{\"VolumeSize\":${d},\"VolumeType\":\"${data_type}\",${data_iops:+\"Iops\":$data_iops,}\"DeleteOnTermination\":true}}";  done
         bdm="${bdm}]"
+        #echo ${bdm}
         
         aws ec2 run-instances --count 1 \
             --instance-type ${type} \
@@ -136,6 +138,11 @@ case $1 in
             rhel)
                 aws ec2 describe-images --region ${region} \
                 --filters 'Name=name,Values=RHEL-7.5_HVM_GA*' 'Name=state,Values=available' \
+                | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
+                ;;
+            centos)
+                aws ec2 describe-images --region ${region} \
+                --filters 'Name=name,Values=CentOS7.5' 'Name=state,Values=available' \
                 | jq -r '.Images | sort_by(.CreationDate) | last(.[]).ImageId'
                 ;;
             amazon2)
