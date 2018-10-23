@@ -1,21 +1,18 @@
 #!/bin/bash -e
 
-# https://github.com/vmware/govmomi/blob/v0.17.1-1-g49c710b/govc/USAGE.md
-# https://github.com/vmware/govmomi/tree/49c710b39ee6de3810ee8130b32361fb8ca1bcb8/govc
-
-export GOVC_HOST="esx67"
-export GOVC_USERNAME="root"
-export GOVC_PASSWORD=$(cat .esx_password)
+export GOVC_USERNAME="administrator@vsphere.local"
+export GOVC_PASSWORD=$(cat .vcs_password)
 export GOVC_INSECURE=true
-export GOVC_URL="https://70.0.0.67/sdk"
-export GOVC_DATASTORE="HDD"
+export GOVC_URL='https://70.0.70.32/sdk'
+export GOVC_DATASTORE="datastore1"
 GOVC=../bin/govc
 
-cpus="2"
-mem="4096"
-disk="4096"
-iso="ISOs/ubuntu-16.04.4-server-amd64-unattended.iso"
-type="ubuntu64Guest"
+: ${cpus:="2"}
+: ${mem:="4096"}
+: ${template:="t_ubuntu1604"}
+: ${script:="ubuntu-run.sh"}
+: ${user:="ubuntu"}
+: ${pass:="ubuntu"}
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -24,20 +21,32 @@ for cmd in $GOVC; do check $cmd; done
 
 case $1 in
     create)
-        $GOVC vm.create -c ${cpus} -m ${mem} -net.adapter vmxnet3 -disk.controller pvscsi -iso ${iso} -g ${type}  ${2:?USAGE: No VM name specified}
+        $GOVC vm.clone -on=true -waitip=true -c ${cpus} -m ${mem} -vm ${template} ${2:?USAGE: No VM name specified} 
+        IP=$(${0} getip ${2:?USAGE: Name not specified})
+        sshpass -p ${pass} ssh-copy-id ${user}@${IP}
+        scp run/${script} ${user}@${IP}:/tmp
+        {
+            echo "sudo -i"
+            echo "set -x"
+            echo "passwd -l ${user}"
+            echo "hostnamectl set-hostname ${2}"
+            echo "echo -e \"127.0.0.1\t${2}\" >> /etc/hosts"
+            echo "chmod 755 /tmp/${script}"
+            echo "/tmp/${script}"
+        } | ssh -t ${user}@${IP} 
         ;;
     delete)
         $GOVC vm.destroy ${2:?USAGE: No VM name specified}
         ;;
     getip)
-        $GOVC vm.ip -a "${2:?USAGE: Name not specified}"
+        $GOVC vm.ip -a "${2:?USAGE: Name not specified}" | cut -d, -f1
         ;;
     ssh)
-        IP=$($GOVC vm.ip -a ${2:?USAGE: Name not specified})
+        IP=$(${0} getip ${2:?USAGE: Name not specified})
         ssh ubuntu@${IP:?Unable to find IP address for the host}
         ;;
     list)
-        $GOVC ls vm | awk -F / '{ print $NF }' | sort
+        $GOVC ls -t VirtualMachine vm | awk -F / '{ print $NF }' | sort
         ;;
     info)
         $GOVC vm.info "${2:?USAGE: Name not specified}"
