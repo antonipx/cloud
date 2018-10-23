@@ -5,10 +5,10 @@ Scripts
 -------
 * az - azure
 * ec2 - aws ec2
-* esx - vmware esx via ssh
+* esx - vmware esx (via ssh)
 * gcp - google
 * gke - googke k8s
-* vcs - vmware vcenter server
+* vcs - vmware vcenter server (via govc)
 
 
 Usage
@@ -67,6 +67,6 @@ see [k8s](https://github.com/antonipx/cloud/blob/master/run/ec2-k8s.sh) example 
 
 Remarks
 -------
-* esx requires a "template" vm with open-vm-tools, openssh-server and passwordless sudo
+* esx/vcs require a template vm with open-vm-tools, openssh-server and passwordless sudo
 * delete command will delete any node regardless of ownership
-* az does not support multiple disks (TODO)
+* az/vcs does not support multiple disks (TODO)
