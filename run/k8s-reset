@@ -1,0 +1,3 @@
+sudo -i
+kubeadm reset
+rm -rf /etc/kubernetes/
