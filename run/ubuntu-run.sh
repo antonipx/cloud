@@ -35,7 +35,7 @@ bind-key -n C-S-Up resize-pane -U 1
 bind-key -n C-S-Down resize-pane -D 1
 bind-key -n C-S-Left resize-pane -L 1
 bind-key -n C-S-Right resize-pane -R 1
-EOT
+bind-key o capture-pane -S -32768 \; save-buffer / tmux-buffer.txt \;EOT
 
 ln -s /opt/pwx/bin/pxctl /bin/pxctl
 
