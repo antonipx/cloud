@@ -9,10 +9,12 @@ GOVC=../bin/govc
 
 : ${cpus:="2"}
 : ${mem:="4096"}
+: ${data_size="100"}
 : ${template:="t_ubuntu1604"}
 : ${script:="ubuntu-run.sh"}
 : ${user:="ubuntu"}
 : ${pass:="ubuntu"}
+: ${owner:="as"}
 
 usage() { echo "Usage: $0 $(gawk '/^\s*[a-z]*)/ { gsub(/)/,""); gsub(/\s/, "");  printf("|%s", $0); } END { printf("|\n") }' $0) <name>"; exit 1; }
 check() { [ -x "$(command -v $1)" ] || { echo "Error: $1 is not installed, aborting"; exit 1; } }
@@ -21,13 +23,22 @@ for cmd in $GOVC; do check $cmd; done
 
 case $1 in
     create)
-        $GOVC vm.clone -on=true -waitip=true -c ${cpus} -m ${mem} -vm ${template} ${2:?USAGE: No VM name specified} 
+        $GOVC vm.clone -annotation="owner=${owner}" -on=true -waitip=true -c ${cpus} -m ${mem} -vm ${template} ${2:?USAGE: No VM name specified} 
+        $GOVC vm.change -e="disk.enableUUID=1" -vm ${2}
+        [ "$data_size" ] && {
+            n=1
+            for d in $data_size
+            do
+                $GOVC vm.disk.create -vm ${2} -name ${2}/disk${n} -size ${d}G
+                let n+=1
+            done
+        }
         IP=$(${0} getip ${2:?USAGE: Name not specified})
         sshpass -p ${pass} ssh-copy-id ${user}@${IP}
         scp run/${script} ${user}@${IP}:/tmp
         {
             echo "sudo -i"
-            echo "set -x"
+            echo "for h in /sys/class/scsi_host/*/scan; do echo \"- - -\" > \$h; done"
             echo "passwd -l ${user}"
             echo "hostnamectl set-hostname ${2}"
             echo "echo -e \"127.0.0.1\t${2}\" >> /etc/hosts"
