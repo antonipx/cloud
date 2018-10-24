@@ -6,7 +6,7 @@
 
 : ${cpus:="2"}
 : ${mem:="4096"}
-: ${data_size:="100"}
+: ${data_size="100"}
 : ${owner:="as"}
 : ${type:="ubuntu-64"}
 : ${template:="/vmfs/volumes/SSD/ubuntu_template/ubuntu_template_0.vmdk"}
